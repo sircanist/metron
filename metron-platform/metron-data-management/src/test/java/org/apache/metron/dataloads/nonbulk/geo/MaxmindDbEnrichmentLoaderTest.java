@@ -126,7 +126,7 @@ public class MaxmindDbEnrichmentLoaderTest {
     String geoUrl = "file://" + dbFile.getAbsolutePath();
     int numRetries = 2;
     MaxmindDbEnrichmentLoader loader = new MockMaxmindDbEnrichmentLoader();
-    IllegalStateException e = assertThrows(IllegalStateException.class, () -> loader.downloadGeoFile(geoUrl, tmpDir.getAbsolutePath(), numRetries));
+    IllegalStateException e = assertThrows(IllegalStateException.class, () -> loader.downloadGeoFile(geoUrl, tmpDir, numRetries));
     assertEquals("Unable to download geo enrichment database.", e.getMessage());
   }
 
