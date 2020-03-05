@@ -222,33 +222,50 @@ public class MaxmindDbEnrichmentLoader {
   }
 
   protected void loadGeoLiteDatabase(CommandLine cli) throws IOException {
-    // Retrieve the database file
-    System.out.println("Retrieving GeoLite2 archive");
+    File localGeoFile;
+    File localASNFile;
 
-    String geo_url = GeoEnrichmentOptions.GEO_URL.get(cli, null);
-    if (geo_url == null) {
-      String licence = GeoEnrichmentOptions.GEO_LICENCE.get(cli, null);
-      if (licence == null) {
-        System.err.println("Either licence or geoip url is required.");
-        System.exit(5);
-      }
-      String geo_base_url = GeoEnrichmentOptions.GEO_BASE_URL.get(cli, DEFAULT_GEOIP_BASE_URL);
-      String geo_city_edition = GeoEnrichmentOptions.GEO_CITY_EDITION.get(cli, DEFAULT_GEOIP_CITY_EDITION);
-      String geo_suffix = GeoEnrichmentOptions.GEO_SUFFIX.get(cli, DEFAULT_GEOIP_SUFFIX);
-      geo_url = geo_base_url + "?edition=" + geo_city_edition + "&licence=" + licence + "&suffix=" + geo_suffix;
-    }
+    int numRetries = Integer.parseInt(GeoEnrichmentOptions.RETRIES.get(cli, DEFAULT_RETRIES));
 
     String tmpDir = GeoEnrichmentOptions.TMP_DIR.get(cli, "/tmp") + "/"; // Make sure there's a file separator at the end
-    int numRetries = Integer.parseInt(GeoEnrichmentOptions.RETRIES.get(cli, DEFAULT_RETRIES));
-    File localGeoFile = null;
+    String geo_url = GeoEnrichmentOptions.GEO_URL.get(cli, null);
+    String asn_url = GeoEnrichmentOptions.ASN_URL.get(cli, null);
+    String geo_suffix = GeoEnrichmentOptions.GEO_SUFFIX.get(cli, DEFAULT_GEOIP_SUFFIX);
+    String geo_base_url = GeoEnrichmentOptions.GEO_BASE_URL.get(cli, DEFAULT_GEOIP_BASE_URL);
+
+    String licence = GeoEnrichmentOptions.GEO_LICENCE.get(cli, null);
+    if ((geo_url == null || asn_url == null) && licence == null) {
+      System.err.println("Either licence or geoip url is required.");
+      System.exit(6);
+    }
+
+    if (geo_url == null) {
+      String geo_city_edition = GeoEnrichmentOptions.GEO_CITY_EDITION.get(cli, DEFAULT_GEOIP_CITY_EDITION);
+      geo_url = geo_base_url + "?edition=" + geo_city_edition + "&licence=" + licence + "&suffix=" + geo_suffix;
+      localGeoFile = new File(tmpDir + geo_city_edition + "." + geo_suffix);
+    } else {
+      localGeoFile = new File(tmpDir + new File(new URL(geo_url).getPath()).getName());
+    }
+
+    if (asn_url == null) {
+      String geo_asn_edition = GeoEnrichmentOptions.GEO_CITY_EDITION.get(cli, DEFAULT_GEOIP_CITY_EDITION);
+      asn_url = geo_base_url + "?edition=" + geo_asn_edition + "&licence=" + licence + "&suffix=" + geo_suffix;
+      localASNFile = new File(tmpDir + geo_asn_edition + "." + geo_suffix);
+    } else {
+      localASNFile = new File(tmpDir + new File(new URL(geo_url).getPath()).getName());
+    }
+
     try {
-      localGeoFile = downloadGeoFile(geo_url, tmpDir, numRetries);
+      localGeoFile = downloadGeoFile(geo_url, localGeoFile, numRetries);
+      localASNFile = downloadGeoFile(asn_url, localASNFile, numRetries);
     } catch (IllegalStateException ies) {
       System.err.println("Failed to download geo db file. Aborting");
       System.exit(5);
     }
+
     // Want to delete the tar in event of failure
     localGeoFile.deleteOnExit();
+    localASNFile.deleteOnExit();
     System.out.println("GeoIP city db downloaded successfully");
 
     // Push the Geo file to HDFS and update Configs to ensure clients get new view
@@ -256,6 +273,8 @@ public class MaxmindDbEnrichmentLoader {
     long millis = LocalDateTime.now().toInstant(ZoneOffset.UTC).toEpochMilli();
     String hdfsGeoLoc = GeoEnrichmentOptions.REMOTE_GEO_DIR.get(cli, "/apps/metron/geo/" + millis);
     System.out.println("Putting GeoLite City file into HDFS at: " + hdfsGeoLoc);
+    String hdfsAsnLoc = GeoEnrichmentOptions.REMOTE_ASN_DIR.get(cli, "/apps/metron/asn/" + millis);
+    System.out.println("Putting ASN file into HDFS at: " + hdfsAsnLoc);
 
     // Put Geo into HDFS
     Path srcPath = new Path(localGeoFile.getAbsolutePath());
@@ -263,36 +282,8 @@ public class MaxmindDbEnrichmentLoader {
     putDbFile(srcPath, dstPath);
     pushConfig(srcPath, dstPath, GeoLiteCityDatabase.GEO_HDFS_FILE, zookeeper);
 
-    String asn_url = GeoEnrichmentOptions.ASN_URL.get(cli, null);
-    if (asn_url == null) {
-      String licence = GeoEnrichmentOptions.GEO_LICENCE.get(cli, null);
-      if (licence == null) {
-        System.err.println("Either licence or geoip url is required.");
-        System.exit(5);
-      }
-      String geo_base_url = GeoEnrichmentOptions.GEO_BASE_URL.get(cli, DEFAULT_GEOIP_BASE_URL);
-      String geo_asn_edition = GeoEnrichmentOptions.GEO_ASN_EDITION.get(cli, DEFAULT_GEOIP_ASN_EDITION);
-      String geo_suffix = GeoEnrichmentOptions.GEO_SUFFIX.get(cli, DEFAULT_GEOIP_SUFFIX);
-      asn_url = geo_base_url + "?edition=" + geo_asn_edition + "&licence=" + licence + "&suffix=" + geo_suffix;
-    }
-
-    File localAsnFile = null;
-    try {
-      localAsnFile = downloadGeoFile(asn_url, tmpDir, numRetries);
-    } catch (IllegalStateException ies) {
-      System.err.println("Failed to download geo db file. Aborting");
-      System.exit(5);
-    }
-    // Want to delete the tar in event of failure
-    localAsnFile.deleteOnExit();
-    System.out.println("GeoIP ASN db downloaded successfully");
-
-    // Push the ASN file to HDFS and update Configs to ensure clients get new view
-    String hdfsAsnLoc = GeoEnrichmentOptions.REMOTE_ASN_DIR.get(cli, "/apps/metron/asn/" + millis);
-    System.out.println("Putting ASN file into HDFS at: " + hdfsAsnLoc);
-
     // Put ASN into HDFS
-    srcPath = new Path(localAsnFile.getAbsolutePath());
+    srcPath = new Path(localASNFile.getAbsolutePath());
     dstPath = new Path(hdfsAsnLoc);
     putDbFile(srcPath, dstPath);
     pushConfig(srcPath, dstPath, GeoLiteAsnDatabase.ASN_HDFS_FILE, zookeeper);
@@ -301,14 +292,12 @@ public class MaxmindDbEnrichmentLoader {
     System.out.println("Successfully created and updated new GeoLite information");
   }
 
-  protected File downloadGeoFile(String urlStr, String tmpDir, int  numRetries) {
-    File localFile = null;
+  protected File downloadGeoFile(String urlStr, File localFile, int numRetries) {
     int attempts = 0;
     boolean valid = false;
     while (!valid && attempts <= numRetries) {
       try {
         URL url = new URL(urlStr);
-        localFile = new File(tmpDir + new File(url.getPath()).getName());
 
         System.out.println("Downloading " + url.toString() + " to " + localFile.getAbsolutePath());
         if (localFile.exists() && !localFile.delete()) {
