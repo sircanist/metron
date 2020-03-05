@@ -23,16 +23,10 @@
     enrichment adapter parameters
   -->
   <property>
-    <name>geoip_url</name>
-    <value>http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.tar.gz</value>
-    <description>Location of the GeoIP data to load.</description>
-    <display-name>GEOIP Load Datafile URL</display-name>
-  </property>
-  <property>
-    <name>asn_url</name>
-    <value>http://geolite.maxmind.com/download/geoip/database/GeoLite2-ASN.tar.gz</value>
-    <description>Location of the ASN data to load.</description>
-    <display-name>ASN Load Datafile URL</display-name>
+    <name>geoip_licence</name>
+    <value>U8HWBm5800hDM7HG</value>
+    <description>Maxmind GeoIP Licence</description>
+    <display-name>Maxmind GeoIP Licence</display-name>
   </property>
   <property>
     <name>enrichment_host_known_hosts</name>

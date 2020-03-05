@@ -46,8 +46,10 @@ import java.util.Map;
 public class MaxmindDbEnrichmentLoader {
 
   private static final String DEFAULT_RETRIES = "2";
-  private static final String GEO_CITY_URL_DEFAULT = "http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.tar.gz";
-  private static final String ASN_URL_DEFAULT = "http://geolite.maxmind.com/download/geoip/database/GeoLite2-ASN.tar.gz";
+  private static final String DEFAULT_GEOIP_CITY_EDITION = "GeoLite2-City";
+  private static final String DEFAULT_GEOIP_ASN_EDITION = "GeoLite2-ASN";
+  private static final String DEFAULT_GEOIP_BASE_URL = "https://download.maxmind.com/app/geoip_download";
+  private static final String DEFAULT_GEOIP_SUFFIX = "tar.gz";
 
   private static abstract class OptionHandler implements Function<String, Option> {
   }
@@ -59,10 +61,55 @@ public class MaxmindDbEnrichmentLoader {
         return new Option(s, "help", false, "Generate Help screen");
       }
     }),
+    GEO_LICENCE("l", new MaxmindDbEnrichmentLoader.OptionHandler() {
+      @Override
+      public Option apply(@Nullable String s) {
+        Option o = new Option(s, "geoip_licence", true, "GeoIP Licence");
+        o.setArgName("GEOIP_LICENCE");
+        o.setRequired(false);
+        return o;
+      }
+    }),
+    GEO_CITY_EDITION("ce", new MaxmindDbEnrichmentLoader.OptionHandler() {
+      @Override
+      public Option apply(@Nullable String s) {
+        Option o = new Option(s, "geoip_city_edition", true, "GeoIP City Edition - defaults to " + DEFAULT_GEOIP_CITY_EDITION);
+        o.setArgName("GEOIP_CITY_EDITION");
+        o.setRequired(false);
+        return o;
+      }
+    }),
+    GEO_ASN_EDITION("ae", new MaxmindDbEnrichmentLoader.OptionHandler() {
+      @Override
+      public Option apply(@Nullable String s) {
+        Option o = new Option(s, "geoip_asn_edition", true, "GeoIP ASN Edition - defaults to " + DEFAULT_GEOIP_ASN_EDITION);
+        o.setArgName("GEOIP_ASN_EDITION");
+        o.setRequired(false);
+        return o;
+      }
+    }),
+    GEO_BASE_URL("b", new MaxmindDbEnrichmentLoader.OptionHandler() {
+      @Override
+      public Option apply(@Nullable String s) {
+        Option o = new Option(s, "geoip_base_url", true, "GeoIP Base URL - defaults to " + DEFAULT_GEOIP_BASE_URL);
+        o.setArgName("GEOIP_BASE_URL");
+        o.setRequired(false);
+        return o;
+      }
+    }),
+    GEO_SUFFIX("s", new MaxmindDbEnrichmentLoader.OptionHandler() {
+      @Override
+      public Option apply(@Nullable String s) {
+        Option o = new Option(s, "geoip_suffix", true, "GeoIP suffix - defaults to " + DEFAULT_GEOIP_SUFFIX);
+        o.setArgName("GEOIP_BASE_URL");
+        o.setRequired(false);
+        return o;
+      }
+    }),
     ASN_URL("a", new MaxmindDbEnrichmentLoader.OptionHandler() {
       @Override
       public Option apply(@Nullable String s) {
-        Option o = new Option(s, "asn_url", true, "GeoIP URL - " + ASN_URL_DEFAULT);
+        Option o = new Option(s, "asn_url", true, "GeoIP City URL");
         o.setArgName("ASN_URL");
         o.setRequired(false);
         return o;
@@ -71,7 +118,7 @@ public class MaxmindDbEnrichmentLoader {
     GEO_URL("g", new MaxmindDbEnrichmentLoader.OptionHandler() {
       @Override
       public Option apply(@Nullable String s) {
-        Option o = new Option(s, "geo_url", true, "GeoIP URL - defaults to " + GEO_CITY_URL_DEFAULT);
+        Option o = new Option(s, "geo_url", true, "GeoIP ASN URL");
         o.setArgName("GEO_URL");
         o.setRequired(false);
         return o;
@@ -178,24 +225,31 @@ public class MaxmindDbEnrichmentLoader {
     // Retrieve the database file
     System.out.println("Retrieving GeoLite2 archive");
 
-    String geo_url = GeoEnrichmentOptions.GEO_URL.get(cli, GEO_CITY_URL_DEFAULT);
-    String asn_url = GeoEnrichmentOptions.ASN_URL.get(cli, ASN_URL_DEFAULT);
+    String geo_url = GeoEnrichmentOptions.GEO_URL.get(cli, null);
+    if (geo_url == null) {
+      String licence = GeoEnrichmentOptions.GEO_LICENCE.get(cli, null);
+      if (licence == null) {
+        System.err.println("Either licence or geoip url is required.");
+        System.exit(5);
+      }
+      String geo_base_url = GeoEnrichmentOptions.GEO_BASE_URL.get(cli, DEFAULT_GEOIP_BASE_URL);
+      String geo_city_edition = GeoEnrichmentOptions.GEO_CITY_EDITION.get(cli, DEFAULT_GEOIP_CITY_EDITION);
+      String geo_suffix = GeoEnrichmentOptions.GEO_SUFFIX.get(cli, DEFAULT_GEOIP_SUFFIX);
+      geo_url = geo_base_url + "?edition=" + geo_city_edition + "&licence=" + licence + "&suffix=" + geo_suffix;
+    }
 
     String tmpDir = GeoEnrichmentOptions.TMP_DIR.get(cli, "/tmp") + "/"; // Make sure there's a file separator at the end
     int numRetries = Integer.parseInt(GeoEnrichmentOptions.RETRIES.get(cli, DEFAULT_RETRIES));
     File localGeoFile = null;
-    File localAsnFile = null;
     try {
       localGeoFile = downloadGeoFile(geo_url, tmpDir, numRetries);
-      localAsnFile = downloadGeoFile(asn_url, tmpDir, numRetries);
     } catch (IllegalStateException ies) {
       System.err.println("Failed to download geo db file. Aborting");
       System.exit(5);
     }
     // Want to delete the tar in event of failure
     localGeoFile.deleteOnExit();
-    localAsnFile.deleteOnExit();
-    System.out.println("GeoIP files downloaded successfully");
+    System.out.println("GeoIP city db downloaded successfully");
 
     // Push the Geo file to HDFS and update Configs to ensure clients get new view
     String zookeeper = GeoEnrichmentOptions.ZK_QUORUM.get(cli);
@@ -208,6 +262,30 @@ public class MaxmindDbEnrichmentLoader {
     Path dstPath = new Path(hdfsGeoLoc);
     putDbFile(srcPath, dstPath);
     pushConfig(srcPath, dstPath, GeoLiteCityDatabase.GEO_HDFS_FILE, zookeeper);
+
+    String asn_url = GeoEnrichmentOptions.ASN_URL.get(cli, null);
+    if (asn_url == null) {
+      String licence = GeoEnrichmentOptions.GEO_LICENCE.get(cli, null);
+      if (licence == null) {
+        System.err.println("Either licence or geoip url is required.");
+        System.exit(5);
+      }
+      String geo_base_url = GeoEnrichmentOptions.GEO_BASE_URL.get(cli, DEFAULT_GEOIP_BASE_URL);
+      String geo_asn_edition = GeoEnrichmentOptions.GEO_ASN_EDITION.get(cli, DEFAULT_GEOIP_ASN_EDITION);
+      String geo_suffix = GeoEnrichmentOptions.GEO_SUFFIX.get(cli, DEFAULT_GEOIP_SUFFIX);
+      asn_url = geo_base_url + "?edition=" + geo_asn_edition + "&licence=" + licence + "&suffix=" + geo_suffix;
+    }
+
+    File localAsnFile = null;
+    try {
+      localAsnFile = downloadGeoFile(asn_url, tmpDir, numRetries);
+    } catch (IllegalStateException ies) {
+      System.err.println("Failed to download geo db file. Aborting");
+      System.exit(5);
+    }
+    // Want to delete the tar in event of failure
+    localAsnFile.deleteOnExit();
+    System.out.println("GeoIP ASN db downloaded successfully");
 
     // Push the ASN file to HDFS and update Configs to ensure clients get new view
     String hdfsAsnLoc = GeoEnrichmentOptions.REMOTE_ASN_DIR.get(cli, "/apps/metron/asn/" + millis);

@@ -112,14 +112,12 @@ class EnrichmentCommands:
 
         Logger.info("Creating and loading Maxmind databases")
         command_template = """{0}/bin/maxmind_enrichment_load.sh \
-                                -g {1} \
-                                -a {2} \
-                                -r {3} \
-                                -ra {4} \
-                                -z {5}"""
+                                -l {1} \
+                                -r {2} \
+                                -ra {3} \
+                                -z {4}"""
         command = command_template.format(self.__params.metron_home,
-                                          self.__params.geoip_url,
-                                          self.__params.asn_url,
+                                          self.__params.geoip_licence,
                                           self.__params.geoip_hdfs_dir,
                                           self.__params.asn_hdfs_dir,
                                           self.__params.zookeeper_quorum
