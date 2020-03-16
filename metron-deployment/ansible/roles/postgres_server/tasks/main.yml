@@ -1,0 +1,56 @@
+---
+- name: Install postgresql
+  yum:
+    name: postgresql
+
+- name: Allow remote access to database
+  postgresql_pg_hba:
+    dest: /var/lib/pgsql/data/pg_hba.conf
+    contype: host
+    users: "{{item.user}}"
+    source: 127.0.0.1/32
+    databases: "{{item.db}}"
+    method: md5
+  loop:
+    - {user: hive, db: hive}
+    - {user: oozie, db: oozie}
+    - {user: metrondb, db: metrondb}
+    - {user: rangeradmin, db: ranger}
+    - {user: rangerkms, db: rangerkms}
+    - {user: druid, db: druid}
+    - {user: ambari_setup, db: postgres}
+
+- name: Restart postgres server
+  service:
+    name: postgresql
+    state: restarted
+
+- name: Create metron databases
+  become_user: postgres
+  postgresql_db:
+    name: "{{item}}"
+  loop:
+    - hive
+    - oozie
+    - druid
+    - metrondb
+
+- name: Create ambari setup user
+  become_user: postgres
+  postgresql_user:
+    name: ambari_setup
+    password: ambari_setup
+    role_attr_flags: CREATEDB,NOSUPERUSER
+
+- name: Create metron users
+  become_user: postgres
+  postgresql_user:
+    db: "{{item}}"
+    name: "{{item}}"
+    password: "{{item}}"
+    priv: ALL
+  loop:
+    - hive
+    - druid
+    - oozie
+    - metrondb

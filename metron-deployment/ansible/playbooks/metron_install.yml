@@ -32,6 +32,12 @@
   tags:
     - packages
 
+
+- hosts: web
+  become: true
+  roles:
+    - role: postgres_server
+
 #
 # push the metron packages (RPM or DEB) to the metron host(s) only
 #

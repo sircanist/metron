@@ -1,0 +1,4 @@
+---
+- name: Install psycopg2 via pip
+  pip:
+    name: psycopg2-binary
