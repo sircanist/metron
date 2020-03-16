@@ -45,7 +45,7 @@ puts " Running with ansible-skip-tags: " + ansibleSkipTags.split(",").to_s if an
 hosts = [{
     hostname: "node1",
     ip: "192.168.66.121",
-    memory: "8192",
+    memory: "13000",
     cpus: 4,
     promisc: 2  # enables promisc on the 'Nth' network interface
 }]
@@ -69,7 +69,6 @@ Vagrant.configure(2) do |config|
       mount_options: ['rw', 'vers=3', 'tcp', 'nolock']
     }
   end
-
   # host definition
   hosts.each_with_index do |host, index|
     config.vm.define host[:hostname] do |node|
@@ -77,6 +76,12 @@ Vagrant.configure(2) do |config|
       # host settings
       node.vm.hostname = host[:hostname]
       node.vm.network "private_network", ip: host[:ip]
+
+      config.vm.provider :libvirt do |libvirt|
+        libvirt.driver = "kvm"
+        libvirt.memory = 8192
+        libvirt.cpus = 4
+      end
 
       # vm settings
       node.vm.provider "virtualbox" do |vb|
