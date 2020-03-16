@@ -117,7 +117,7 @@ class EnrichmentCommands:
                                 -ra {3} \
                                 -z {4}"""
         command = command_template.format(self.__params.metron_home,
-                                          self.__params.geoip_licence,
+                                          self.__params.geoip_license,
                                           self.__params.geoip_hdfs_dir,
                                           self.__params.asn_hdfs_dir,
                                           self.__params.zookeeper_quorum

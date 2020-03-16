@@ -64,8 +64,8 @@ public class MaxmindDbEnrichmentLoader {
     GEO_LICENCE("l", new MaxmindDbEnrichmentLoader.OptionHandler() {
       @Override
       public Option apply(@Nullable String s) {
-        Option o = new Option(s, "geoip_licence", true, "GeoIP Licence");
-        o.setArgName("GEOIP_LICENCE");
+        Option o = new Option(s, "geoip_license", true, "GeoIP Licence");
+        o.setArgName("GEOIP_LICENSE");
         o.setRequired(false);
         return o;
       }
@@ -233,23 +233,23 @@ public class MaxmindDbEnrichmentLoader {
     String geo_suffix = GeoEnrichmentOptions.GEO_SUFFIX.get(cli, DEFAULT_GEOIP_SUFFIX);
     String geo_base_url = GeoEnrichmentOptions.GEO_BASE_URL.get(cli, DEFAULT_GEOIP_BASE_URL);
 
-    String licence = GeoEnrichmentOptions.GEO_LICENCE.get(cli, null);
-    if ((geo_url == null || asn_url == null) && licence == null) {
+    String license = GeoEnrichmentOptions.GEO_LICENCE.get(cli, null);
+    if ((geo_url == null || asn_url == null) && license == null) {
       System.err.println("Either licence or geoip url is required.");
       System.exit(6);
     }
 
     if (geo_url == null) {
       String geo_city_edition = GeoEnrichmentOptions.GEO_CITY_EDITION.get(cli, DEFAULT_GEOIP_CITY_EDITION);
-      geo_url = geo_base_url + "?edition=" + geo_city_edition + "&licence=" + licence + "&suffix=" + geo_suffix;
+      geo_url = geo_base_url + "?edition_id=" + geo_city_edition + "&license_key=" + license + "&suffix=" + geo_suffix;
       localGeoFile = new File(tmpDir + geo_city_edition + "." + geo_suffix);
     } else {
       localGeoFile = new File(tmpDir + new File(new URL(geo_url).getPath()).getName());
     }
 
     if (asn_url == null) {
-      String geo_asn_edition = GeoEnrichmentOptions.GEO_CITY_EDITION.get(cli, DEFAULT_GEOIP_CITY_EDITION);
-      asn_url = geo_base_url + "?edition=" + geo_asn_edition + "&licence=" + licence + "&suffix=" + geo_suffix;
+      String geo_asn_edition = GeoEnrichmentOptions.GEO_ASN_EDITION.get(cli, DEFAULT_GEOIP_ASN_EDITION);
+      asn_url = geo_base_url + "?edition_id=" + geo_asn_edition + "&license_key=" + license + "&suffix=" + geo_suffix;
       localASNFile = new File(tmpDir + geo_asn_edition + "." + geo_suffix);
     } else {
       localASNFile = new File(tmpDir + new File(new URL(geo_url).getPath()).getName());

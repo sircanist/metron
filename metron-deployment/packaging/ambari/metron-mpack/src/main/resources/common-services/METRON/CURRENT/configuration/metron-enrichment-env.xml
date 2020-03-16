@@ -23,10 +23,10 @@
     enrichment adapter parameters
   -->
   <property>
-    <name>geoip_licence</name>
-    <value>U8HWBm5800hDM7HG</value>
-    <description>Maxmind GeoIP Licence</description>
-    <display-name>Maxmind GeoIP Licence</display-name>
+    <name>geoip_license</name>
+    <value></value>
+    <description>Maxmind GeoIP License</description>
+    <display-name>Maxmind GeoIP License</display-name>
   </property>
   <property>
     <name>enrichment_host_known_hosts</name>
