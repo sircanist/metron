@@ -23,3 +23,12 @@
   service:
     name: ambari-server
     state: restarted
+
+- name: Download postgresql jdbc driver
+  get_url:
+    url: https://jdbc.postgresql.org/download/postgresql-{{postgres_jdbc_driver_version}}.jar
+    dest: /tmp/postgresql-{{postgres_jdbc_driver_version}}.jar
+
+- name: Install postgresql jdbc driver
+  become: true
+  shell: ambari-server setup --jdbc-db=postgres --jdbc-driver=/tmp/postgresql-{{postgres_jdbc_driver_version}}.jar

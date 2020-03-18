@@ -22,3 +22,9 @@
 - name: Install Python's pip on Ubuntu
   apt: name=python-pip force=yes
   when: ansible_distribution == "Ubuntu"
+
+- name: Upgrade pip to latest version
+  become: true
+  pip:
+    name: pip
+    state: latest

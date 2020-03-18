@@ -22,3 +22,4 @@ metron_mpack_path: "{{ playbook_dir }}/../../packaging/ambari/metron-mpack/targe
 elasticsearch_mpack_version: 5.6.14
 elasticsearch_mpack_name: elasticsearch_mpack-{{ ambari_mpack_version }}.tar.gz
 elasticsearch_mpack_path: "{{ playbook_dir }}/../../packaging/ambari/elasticsearch-mpack/target/{{ elasticsearch_mpack_name }}"
+postgres_jdbc_driver_version: 42.2.11

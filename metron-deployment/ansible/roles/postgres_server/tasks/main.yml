@@ -2,6 +2,7 @@
 - name: Install postgresql
   yum:
     name: postgresql
+    state: present
 
 - name: Allow remote access to database
   postgresql_pg_hba:

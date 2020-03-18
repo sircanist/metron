@@ -16,5 +16,6 @@
 #
 ---
 - name: Install python httplib2 dependency
+  become: true
   pip:
     name: httplib2
